@@ -4,12 +4,14 @@ from langchain_core.runnables import Runnable, RunnableLambda
 from question_bank import QUESTION_BANK
 from langgraph.graph import StateGraph
 from typing import TypedDict
+import streamlit as st
 
 import random
 
 # Load OpenAI key
 import os
-openai_api_key = os.getenv("OPENAI_API_KEY")
+#pulling key from secrets
+openai_api_key = st.secrets("OPENAI_API_KEY")
 
 
 # Define the LLM
