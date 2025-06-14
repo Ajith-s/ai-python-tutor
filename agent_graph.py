@@ -11,7 +11,7 @@ import random
 # Load OpenAI key
 import os
 #pulling key from secrets
-openai_api_key = st.secrets("OPENAI_API_KEY")
+openai_api_key = st.secrets["OPENAI_API_KEY"]
 
 
 # Define the LLM
