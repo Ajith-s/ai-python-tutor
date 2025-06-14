@@ -14,7 +14,7 @@ from preloaded_packages import preloaded_globals
 # Load environment variables
 load_dotenv()
 #pulling key from secrets
-openai_api_key = st.secrets("OPENAI_API_KEY")
+openai_api_key = st.secrets["OPENAI_API_KEY"]
 if not openai_api_key:
     st.error("OpenAI API key is not set. Please set the OPENAI_API_KEY environment variable.")
     st.stop()
