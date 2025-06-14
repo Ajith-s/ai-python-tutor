@@ -316,3 +316,10 @@ with st.expander("📂 View All Answered Questions & Code", expanded=False):
             st.markdown("**Your Submitted Code:**")
             st.code(q["user_code"], language="python")
         st.markdown("---")
+
+st.markdown("---")
+st.subheader("About This App")
+st.markdown("source code: https://github.com/Ajith-s/ai-python-tutor")
+st.markdown("This app is developed by Ajith Sharma for educational purposes. It uses OpenAI's GPT-4 model to provide personalized Python tutoring.")
+st.markdown("Please note that this app is in its early stages and may not provide optimal results for all users. Please provide feedback to help improve it!")
+st.markdown("For any issues or suggestions, please open an issue on the GitHub repository.")
