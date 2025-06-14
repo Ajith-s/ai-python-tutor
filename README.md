@@ -38,3 +38,23 @@ cd ai-python-tutor
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
+
+### **Environment Setup**
+
+Create a .env file in the root directory and add your OpenAI API key:
+```bash
+OPENAI_API_KEY=your-api-key-here
+
+Firebase Configuration
+	1.	Go to your Firebase project console.
+	2.	Enable Firestore and Authentication.
+	3.	Download the Admin SDK service account key:
+	•	Navigate to Project Settings > Service accounts
+	•	Click “Generate new private key”
+	•	Save the file as firebase_service_account.json in the project root
+
+Make sure firebase_service_account.json is included in your .gitignore to avoid accidentally pushing secrets.
+
+Running the App
+```bash
+streamlit run main.py
