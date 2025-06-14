@@ -1,0 +1,6 @@
+firebase_service_account.json
+users.json
+venv/
+__pycache__/
+*.pyc
+.streamlit/
