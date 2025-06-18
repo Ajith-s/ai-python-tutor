@@ -86,3 +86,23 @@ def process_submission(graph_state, user):
         "score": score,
         "feedback": feedback
     }
+
+def is_output_equal(actual, expected):
+    # Handle numeric comparison with tolerance
+    if isinstance(actual, (int, float)) and isinstance(expected, (int, float)):
+        return abs(actual - expected) < 1e-5
+
+    # Handle strings: ignore leading/trailing whitespace
+    if isinstance(actual, str) and isinstance(expected, str):
+        return actual.strip() == expected.strip()
+
+    # Handle unordered list/set comparison
+    if isinstance(actual, (list, set)) and isinstance(expected, (list, set)):
+        return sorted(actual) == sorted(expected)
+
+    # Handle dict comparison
+    if isinstance(actual, dict) and isinstance(expected, dict):
+        return actual == expected  # you can deep sort keys if needed
+
+    # Final fallback: strict equality
+    return actual == expected

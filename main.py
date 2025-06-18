@@ -6,7 +6,7 @@ from streamlit_ace import st_ace
 import streamlit_confetti
 import json
 from agent_graph import graph, llm, question_generator_node, hint_generator_node, answer_checker_node
-from helper_functions import  diagnose_failed_test_case, process_submission, init_static_session_state, load_user_into_session
+from helper_functions import  diagnose_failed_test_case, process_submission, init_static_session_state, load_user_into_session, is_output_equal
 from auth import check_login, update_user
 from preloaded_packages import preloaded_globals
 
@@ -144,53 +144,87 @@ if user_code:
 # Save user code to session state
 update_user(st.session_state.user)
 
-if st.button("Run test Cases"):
-    try:
-        global_vars = {"__builtins__": __builtins__}
-        local_vars = {}
-        exec(user_code, preloaded_globals.copy(), local_vars)
+st.subheader("🔁 Execute Code")
 
-        funcs = [name for name in local_vars if callable(local_vars[name])]
-        if not funcs:
-            st.warning("⚠️ No function detected in your code.")
-            st.stop()
-        func_name = funcs[0]
-        user_func = local_vars[func_name]
+# Shared execution context
+exec_context = preloaded_globals.copy()
+exec_context["__builtins__"] = __builtins__
+
+# Handle Code Execution (no test cases)
+if st.button("▶️ Execute Code (no test cases)"):
+    try:
+        output_buffer = []
+
+        # Capture print statements
+        def custom_print(*args, **kwargs):
+            output_buffer.append(" ".join(str(arg) for arg in args))
+
+        exec_context["print"] = custom_print
+        exec(user_code, exec_context, exec_context)
+
+        if output_buffer:
+            st.markdown("🖨️ Output from your code:")
+            for line in output_buffer:
+                st.text(line)
+        else:
+            st.info("✅ Code executed successfully, but nothing was printed.")
+    except Exception as e:
+        st.error(f"❌ Error during code execution: {e}")
+        st.text(traceback.format_exc())
+
+# Handle Test Case Execution
+if st.button("🧪 Run Test Cases"):
+    try:
+        # Unified exec context with custom print
+        exec_context = preloaded_globals.copy()
+        exec_context["__builtins__"] = __builtins__
+        output_buffer = []
+
+        def custom_print(*args, **kwargs):
+            output_buffer.append(" ".join(str(arg) for arg in args))
+
+        exec_context["print"] = custom_print
+
+        # Execute user code (defines all functions)
+        exec(user_code, exec_context, exec_context)
+
         test_results = []
         failed_cases = []
 
         for test_case in question_data["test_cases"]:
             input_str = test_case["input"]
+            expected_output_str = test_case["expected_output"]
 
-            st.write(f"Input string: {repr(input_str)}")  # show exact string
+            st.write(f"🔎 Running: `{input_str}`")
+
             try:
-                input_data = eval(input_str)
+                expected_output = eval(expected_output_str, exec_context)
             except Exception as e:
-                st.error(f"Failed to eval input: {input_str}")
+                st.error(f"❌ Failed to evaluate expected output: `{expected_output_str}`")
                 st.error(str(e))
-                continue  # skip this test case or handle accordingly
-            expected_output = eval(test_case["expected_output"])
+                continue
 
             try:
-                output = user_func(input_data) if isinstance(input_data, (list, str, int, float)) else user_func(*input_data)
-                result = (output == expected_output)
+                actual_output = eval(input_str, exec_context)
+                result = is_output_equal(actual_output, expected_output)
                 test_results.append(result)
 
                 if not result:
                     failed_cases.append({
-                        "input": input_data,
+                        "input": input_str,
                         "expected": expected_output,
-                        "actual": output
+                        "actual": actual_output
                     })
 
             except Exception as e:
                 test_results.append(False)
                 failed_cases.append({
-                    "input": input_data,
+                    "input": input_str,
                     "expected": expected_output,
                     "actual": f"Error: {e}"
                 })
 
+        # Evaluate test results
         if all(test_results):
             st.success("🎉 All test cases passed! You can now submit your solution.")
             st.session_state.show_confetti = True
@@ -199,15 +233,15 @@ if st.button("Run test Cases"):
         else:
             st.session_state.show_confetti = False
             st.session_state.graph_state["answer_correct"] = False
-
             st.error(f"❌ {len(failed_cases)} test case(s) failed.")
+
             for i, fc in enumerate(failed_cases, 1):
                 st.markdown(f"### 🔍 Failed Test Case {i}")
                 st.markdown(f"**Input:** `{fc['input']}`")
                 st.markdown(f"**Expected Output:** `{fc['expected']}`")
                 st.markdown(f"**Actual Output:** `{fc['actual']}`")
 
-            
+            fc = failed_cases[0]
             diagnosis = diagnose_failed_test_case(
                 user_code=user_code,
                 input_data=fc["input"],
@@ -217,11 +251,10 @@ if st.button("Run test Cases"):
             )
             st.info(diagnosis)
 
-        # Always save code, even if it fails
         st.session_state.graph_state["user_answer"] = user_code
 
     except Exception as e:
-        st.error(f"⚠️ Error: {e}")
+        st.error(f"⚠️ Error during test execution: {e}")
         st.text(traceback.format_exc())
         st.session_state.graph_state["answer_correct"] = False
 
@@ -252,13 +285,16 @@ with col2:
 
 # Handle Submit
 if submit_clicked:
-    st.session_state.graph_state = answer_checker_node(st.session_state.graph_state)
-    result = process_submission(st.session_state.graph_state, st.session_state.user)
+    if "answer_correct" not in st.session_state.graph_state:
+        st.warning("⚠️ Please run test cases before submitting your solution.")
+    else:
+        st.session_state.graph_state = answer_checker_node(st.session_state.graph_state)
+        result = process_submission(st.session_state.graph_state, st.session_state.user)
 
     if result["answer_correct"]:
         st.success(f"🎉 Correct! You earned {result['score']} points.")
     else:
-        st.error(f"❌ Incorrect. You earned {result['score']} points.")
+        st.error(f"❌ Incorrect. Please try again {st.session_state.user.get('name', '')}.")
 
     update_user(st.session_state.user)
 
